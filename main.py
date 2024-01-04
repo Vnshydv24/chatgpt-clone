@@ -1,16 +1,24 @@
 import os
 from flask import Flask, render_template, jsonify, request
 from flask_pymongo import PyMongo
-from bardapi import Bard
+# from bardapi import Bard
+# from bardapi import BardCookies
+from openai import OpenAI
 from dotenv import load_dotenv
 
-app = Flask(__name__)
-app.config["MONGO_URI"] = "mongodb+srv://yashyadav242:yash24yash@cluster0.pqxqglj.mongodb.net/gptc"
-mongo = PyMongo(app)
 load_dotenv()
 
 token = os.getenv('token')
-bard = Bard(token=token)
+client = OpenAI(api_key=token)
+
+app = Flask(_name_)
+app.config["MONGO_URI"] = "mongodb+srv://yashyadav242:yash24yash@cluster0.pqxqglj.mongodb.net/gptc"
+mongo = PyMongo(app)
+# load_dotenv()
+
+# token = os.getenv('token')
+# bard = Bard(token=token)
+# bard = BardCookies(cookie_dict=cookie_dict)
 
 collection = mongo.db.chats
 
@@ -55,10 +63,23 @@ def qa():
             data = {"question": question, "answer":  f"{chat['answer']}"}
             return jsonify(data)
         else:
-            answer = bard.get_answer(question)['content']
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                      "role": "user",
+                      "content": question
+                    }
+                ],
+                temperature=1,
+                max_tokens=256,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0
+            )
             #print (answer)
-            data= {"question": question, "answer": answer}
-            mongo.db.chats.insert_one({"question": question, "answer": answer})
+            data = {"question": question, "answer": response.choices[0].message.content}
+            mongo.db.chats.insert_one({"question": question, "answer":  response.choices[0].message.content})
             return jsonify(data)
     data = {"result" : "Thank You"}
     return jsonify(data)
